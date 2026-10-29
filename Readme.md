@@ -33,3 +33,34 @@ to `~/.config/ghostty/shaders/shader.glsl`, and can restart Ghostty to load it.
 ./switch-shader.sh -n matrix  # filter by name, do not restart
 ./switch-shader.sh -y         # restart without asking
 ```
+
+### Add the switcher as an alias
+
+Make a short command, for example `gshader`, so you can run the switcher from
+any folder. Use the full path to `switch-shader.sh` in your clone.
+
+**zsh** (macOS default):
+
+```sh
+echo 'alias gshader="$HOME/GhosttyShaders/ghostty-shaders/switch-shader.sh"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**bash**:
+
+```sh
+echo 'alias gshader="$HOME/GhosttyShaders/ghostty-shaders/switch-shader.sh"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+Then use it like the script:
+
+```sh
+gshader            # arrow-key menu, then restart question
+gshader -n matrix  # only shaders with "matrix" in the name, no restart
+```
+
+New terminal windows get the alias automatically. If your clone is in a
+different folder, change the path in the alias. The switcher looks for shaders
+in `~/GhosttyShaders` by default. To use a different folder, also add
+`export GHOSTTY_SHADER_SRC="/path/to/shaders"` to the same file.
