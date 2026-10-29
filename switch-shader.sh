@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Pick a Ghostty shader from ~/GhosttyShaders and make it the active shader.
-# The chosen file is copied to ~/.config/ghostty/shaders/shader.glsl,
-# which ~/.config/ghostty/config loads via `custom-shader`.
+# Pick a Ghostty shader from this repo's folder and make it active.
+# The chosen file is copied to ~/.config/ghostty/shaders/shader.glsl.
+# The script makes sure ~/.config/ghostty/config loads that file via
+# `custom-shader`, adding the line if it is missing.
 #
 # Usage: switch-shader.sh [-y|--restart] [-n|--no-restart] [filter]
 #   filter          optional text; only show shaders whose path contains it
@@ -12,7 +13,17 @@
 
 set -euo pipefail
 
-SRC_DIR="${GHOSTTY_SHADER_SRC:-$HOME/GhosttyShaders}"
+# The shaders live next to this script. Resolve symlinks (bash 3.2 safe) so
+# it works from an alias, a symlink in ~/bin, or any working directory.
+script_path="${BASH_SOURCE[0]}"
+while [ -L "$script_path" ]; do
+    link_dir="$(cd -P "$(dirname "$script_path")" && pwd)"
+    script_path="$(readlink "$script_path")"
+    case "$script_path" in /*) ;; *) script_path="$link_dir/$script_path" ;; esac
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$script_path")" && pwd)"
+
+SRC_DIR="${GHOSTTY_SHADER_SRC:-$SCRIPT_DIR}"
 DEST_DIR="$HOME/.config/ghostty/shaders"
 DEST="$DEST_DIR/shader.glsl"
 OFF="(off - no shader effect)"
@@ -147,6 +158,27 @@ fi
 
 # --- Apply -------------------------------------------------------------------
 mkdir -p "$DEST_DIR"
+
+# Make sure the Ghostty config loads $DEST. Ghostty reads "config.ghostty"
+# or "config" in ~/.config/ghostty; use whichever exists, else create "config".
+CONFIG_DIR="$HOME/.config/ghostty"
+if [ -f "$CONFIG_DIR/config.ghostty" ]; then
+    CONFIG="$CONFIG_DIR/config.ghostty"
+else
+    CONFIG="$CONFIG_DIR/config"
+fi
+touch "$CONFIG"
+if ! grep -Eq "^[[:space:]]*custom-shader[[:space:]]*=[[:space:]]*(~|\$HOME|$HOME)/\.config/ghostty/shaders/shader\.glsl[[:space:]]*$" "$CONFIG"; then
+    # Comment out other custom-shader lines so only this one is active.
+    tmp="$CONFIG.tmp.$$"
+    sed -E 's/^([[:space:]]*custom-shader[[:space:]]*=)/# \1/' "$CONFIG" > "$tmp" && mv "$tmp" "$CONFIG"
+    {
+        echo ""
+        echo "# Added by switch-shader.sh"
+        echo "custom-shader = $DEST"
+    } >> "$CONFIG"
+    echo "Added 'custom-shader = $DEST' to $CONFIG"
+fi
 
 if [ "$choice" = "$OFF" ]; then
     cat > "$DEST" <<'EOF'
